@@ -1,0 +1,18 @@
+# PARTE B - GANHOS PID
+zeta = 0.97404477
+wn = 6.98391541
+alpha = 30.0
+
+Kp = 0.34432787
+Ki = 0.01221858
+Kd = 2.72674512
+
+Mp = 12.28%
+ts = 0.0100s
+Estavel = True
+AtendeSpecs = True
+
+# Para main.cpp:
+const float Kp = 0.34432787f;
+const float Ki = 0.01221858f;
+const float Kd = 2.72674512f;
