@@ -61,6 +61,10 @@ sympy>=1.9
 você pode  rodar o "python check.py" ou vê manualmente também 
 
 ### Instalar
+rode "pip install -r requirements.txt" 
+
+ou  manualmente
+
 ```bash
 # Verificar instalação
 python --version  # ou python3 --version
