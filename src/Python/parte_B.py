@@ -28,9 +28,9 @@ print("="*80)
 # ============================================================
 # GANHOS OBTIDOS DO ALGORITMO GENETICO
 # ============================================================
-KP_GA = 0.01072208
-KI_GA = 0.00014477
-KD_GA = 0.37626039
+KP_GA = 0.01073414
+KI_GA = 0.00014647
+KD_GA = 0.37869266
 
 print(f"\nGANHOS DO ALGORITMO GENETICO:")
 print(f"  Kp = {KP_GA:.8f}")

@@ -1,0 +1,37 @@
+PARTE B - RESULTADOS DO PROJETO POR ALOCACAO DE POLOS
+================================================================================
+
+GANHOS PID (DO ALGORITMO GENETICO):
+  Kp = 0.01073414
+  Ki = 0.00014647
+  Kd = 0.37869266
+
+POLINOMIO CARACTERISTICO (ORDEM 4):
+  z^4 + (-2.88367505)z^3 + (2.77012601)z^2 + (-0.88640875)z + (0.00000000)
+
+DESEMPENHO:
+  Mp  = 24.84%
+  ts  = 0.1400s
+  yss = 1.0002
+
+CRITERIO DE JURY (n=4):
+  P(1) > 0?      True (0.000042)
+  P(-1) > 0?     True (7.540210)
+  |a0| < 1?      True (0.000000)
+  |b3| > |b0|?   True
+  |c2| > |c0|?   True
+  Jury: True
+
+POLOS:
+  z1 = 0.98716837 + j0.01739023  |z| = 0.98732154
+  z2 = 0.98716837 + j-0.01739023  |z| = 0.98732154
+  z3 = 0.89820777 + j0.00000000  |z| = 0.89820777
+  z4 = 0.00000000 + j0.00000000  |z| = 0.00000000
+  Max |z| = 0.98732154
+  Estavel (polos): True
+
+VALIDACAO:
+  Mp OK:   True
+  ts OK:   True
+  Estavel: True
+  Status:  SUCESSO

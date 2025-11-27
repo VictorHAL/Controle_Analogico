@@ -9,12 +9,9 @@ namespace {
   const float Ts = 0.01f;
   
   /// Ganhos do controlador PID digital (calculados via algoritmo genético)
-  const float Kp = 0.010806919f;
-  const float Ki = 0.00014681f;
-  const float Kd = 0.38340489f;
-
-
-
+  const float Kp = 0.01073414f;
+  const float Ki = 0.00014647f;
+  const float Kd = 0.37869266f;
   /// Distância alvo em milímetros (10 cm)
   const float setpoint = 100.0f;
   

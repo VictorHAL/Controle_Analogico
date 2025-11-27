@@ -21,7 +21,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # ============================================================
 # CONFIGURAÇÃO DO ALGORITMO GENÉTICO
 # ============================================================
-NUM_GENERATIONS = 20  # Aumentado
+NUM_GENERATIONS = 60  # Aumentado
 POPULATION_SIZE = 1000  # Aumentado
 MUTATION_RATE = 0.25        
 ELITISM_COUNT = 15  # Aumentado
@@ -43,7 +43,7 @@ MP_MAX = 0.25
 MP_MIN = 0.15               
 TS_MAX = 2.9                
 TS_MIN = 2.2
-UNDERSHOOT_MAX = 0.05
+UNDERSHOOT_MAX = 0.03
 
 
 TS_CRITERION = 0.02  
