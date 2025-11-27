@@ -2,20 +2,20 @@ RESULTADOS DO ALGORITMO GENETICO
 ======================================================================
 
 PARAMETROS DE PROJETO:
-  zeta = 0.59221195
-  wn   = 2.17326171
-  alfa = 8.25395266
+  zeta = 0.61853892
+  wn   = 3.56046073
+  alfa = 5.36823243
 
 GANHOS PID:
-  Kp = 0.01072208
-  Ki = 0.00014477
-  Kd = 0.37626039
+  Kp = 0.01973629
+  Ki = 0.00042597
+  Kd = 0.45683256
 
 DESEMPENHO:
-  Mp  = 25.00%
-  ts  = 2.5000s
+  Mp  = 24.88%
+  ts  = 1.5000s
   yss = 1.0000
-  Undershoot = 2.69%
+  Undershoot = 3.11%
 
 VALIDACAO:
   Mp OK: True

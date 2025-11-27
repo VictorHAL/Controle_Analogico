@@ -1,119 +1,142 @@
 #include <Arduino.h>
 #include <Baratinha.h>
-#include <math.h>
 
 Baratinha bra;
 
 namespace {
-  // Periodo de controle - CORRIGIDO para 0.01s (100 Hz)
+
+  /// Período de amostragem do controlador (100 Hz)
   const float Ts = 0.01f;
   
-  // GANHOS PID - PREENCHER COM VALORES DO GA
-  const float Kp = 0.0f;  // Substituir
-  const float Ki = 0.0f;  // Substituir
-  const float Kd = 0.0f;  // Substituir
+  /// Ganhos do controlador PID digital (calculados via algoritmo genético)
+  const float Kp = 0.01973629f;
+  const float Ki = 0.00042597f;
+  const float Kd = 0.45683256f;
+
+  /// Distância alvo em milímetros (10 cm)
+  const float setpoint = 100.0f;
   
-  // Setpoint (distancia alvo em mm)
-  const float setpoint = 100.0f;  // 10 cm
+  float erro_integral = 0.0f;      ///< Acumulador do termo integral
+  float erro_anterior = 0.0f;      ///< Erro da iteração anterior (para cálculo da derivada)
+  float derivada_filtrada = 0.0f;  ///< Derivada com filtro passa-baixas aplicado
   
-  // Variaveis de controle
-  float erro_integral = 0.0f;
-  float erro_anterior = 0.0f;
-  float derivada_filtrada = 0.0f;
+
+  const float INTEGRAL_MAX = 65.0f;  ///< Limite superior anti-windup
+  const float INTEGRAL_MIN = -65.0f; ///< Limite inferior anti-windup
   
-  // Anti-windup
-  const float INTEGRAL_MAX = 1000.0f;
-  const float INTEGRAL_MIN = -1000.0f;
+  /// Coeficiente do filtro para derivada (filtro passa-baixas exponencial)
+  const float ALPHA_FILTRO = 1.0f;
   
-  // Filtro derivativo
-  const float ALPHA_FILTRO = 0.1f;
+  const float PWM_MAX = 255.0f;  ///< Limite superior do PWM dos motores
+  const float PWM_MIN = -255.0f; ///< Limite inferior do PWM dos motores
   
-  // Saturacao PWM
-  const float PWM_MAX = 255.0f;
-  const float PWM_MIN = -255.0f;
-  
-  // Seguranca
-  const float DIST_MIN = 30.0f;  // 3 cm
+  const float DIST_MIN = 30.0f;  ///< Distância mínima de segurança (3 cm)
 }
 
-float saturar(float valor, float minimo, float maximo) {
+// ============================================================
+// FUNÇÕES AUXILIARES
+// ============================================================
+
+/**
+ * @brief Limita um valor entre um mínimo e um máximo
+ * @param valor Valor a ser saturado
+ * @param minimo Limite inferior
+ * @param maximo Limite superior
+ * @return Valor saturado
+ */
+inline float saturar(float valor, float minimo, float maximo) {
   if (valor > maximo) return maximo;
   if (valor < minimo) return minimo;
   return valor;
 }
+
+/**
+ * @brief Reseta todas as variáveis de estado do controlador
+ * @note Deve ser chamada ao parar o robô
+ */
+void resetar_controle() {
+  erro_integral = 0.0f;
+  erro_anterior = 0.0f;
+  derivada_filtrada = 0.0f;
+}
+
+// ============================================================
+// CONFIGURAÇÃO INICIAL
+// ============================================================
 
 void setup() {
   bra.recoveryMode();
   bra.setupAll();
   bra.setControlInterval(Ts);
   bra.awaitStart();
-  
-  // Reset inicial
-  erro_integral = 0.0f;
-  erro_anterior = 0.0f;
-  derivada_filtrada = 0.0f;
 }
+
+// ============================================================
+// LOOP PRINCIPAL DE CONTROLE
+// ============================================================
 
 void loop() {
   bra.updateStartStop();
   
   if (!bra.isRunning()) {
     bra.stop();
-    erro_integral = 0.0f;
-    erro_anterior = 0.0f;
-    derivada_filtrada = 0.0f;
+    resetar_controle();
     return;
   }
   
   if (!bra.controlTickDue()) return;
   
-  // Leitura do sensor
+  // ============================================================
+  // AQUISIÇÃO E VALIDAÇÃO DA LEITURA DO SENSOR
+  // ============================================================
+  
   float distancia = bra.readDistance();
+
   
-  if (distancia <= 0 || distancia > 2000) {
-    bra.stop();
-    return;
-  }
-  
-  // Seguranca
+  // Segurança: para imediatamente se muito próximo do obstáculo
   if (distancia < DIST_MIN) {
     bra.stop();
     return;
   }
   
-  // Erro
-  float erro = setpoint - distancia;
+  // ============================================================
+  // CÁLCULO DO CONTROLADOR PID
+  // ============================================================
   
-  // Termo P
+  // Cálculo do erro com sinal correto:
+  // Se robô está longe (dist > setpoint) → erro positivo → avança
+  // Se robô está perto (dist < setpoint) → erro negativo → recua
+  float erro = distancia - setpoint;
+  
+  // --- Termo Proporcional ---
   float termo_p = Kp * erro;
   
-  // Termo I (com anti-windup)
-  erro_integral += erro * Ts;
-  erro_integral = saturar(erro_integral, INTEGRAL_MIN, INTEGRAL_MAX);
+  // --- Termo Integral com Anti-Windup ---
+  erro_integral = saturar(erro_integral + erro * Ts, INTEGRAL_MIN, INTEGRAL_MAX);
   float termo_i = Ki * erro_integral;
   
-  // Termo D (com filtro)
+  // --- Termo Derivativo com Filtro Passa-Baixas ---
   float derivada = (erro - erro_anterior) / Ts;
-  derivada_filtrada = ALPHA_FILTRO * derivada + (1.0f - ALPHA_FILTRO) * derivada_filtrada;
-  float termo_d = Kd * derivada_filtrada;
-  
-  // Controle total
-  float u = termo_p + termo_i + termo_d;
-  float u_sat = saturar(u, PWM_MIN, PWM_MAX);
 
-  /*float u = termo_p + termo_i + termo_d;
-float u_sat = saturar(u, -255.0f, 255.0f);
-bra.move1D((int)u_sat); */
+
+  float termo_d = ALPHA_FILTRO * derivada_filtrada + ((1.0f - ALPHA_FILTRO) * Kd * derivada);
   
-  // Anti-windup: compensar integral se saturou
-  if (u != u_sat && Ki != 0) {
-    float excesso = u - u_sat;
-    erro_integral -= (excesso / Ki) * 0.5f;
+  // --- Sinal de Controle Total ---
+  float u = termo_p + termo_i + termo_d;
+  float u_sat = saturar(u, -1, 1);
+
+  int velPID = u_sat * 255.0f;
+  
+  // --- Anti-Windup Condicional ---
+  if (u*255 != velPID && Ki != 0.0f) {
+    erro_integral -= ((u*255 - velPID) / Ki) * 0.5f;
   }
   
-  // Aplicar aos motores
-  bra.move1D((int)u_sat);
+  // ============================================================
+  // APLICAÇÃO DO SINAL DE CONTROLE AOS MOTORES
+  // ============================================================
   
-  // Atualizar estado
+  bra.move1D(velPID);
   erro_anterior = erro;
+  derivada_filtrada = termo_d;
 }
