@@ -13,9 +13,9 @@ Kp = 0.02698
 Ki = 0.00075
 Kd = 0.52282
 '''
-Kp = 0.04134
-Ki = 0.00097
-Kd = 0.67774
+Kp = 0.01633
+Ki = 0.00052
+Kd = 0.35789
 
 print(f"--- SIMULAÇÃO PARTE C ---")
 print(f"Ganhos: Kp={Kp}, Ki={Ki}, Kd={Kd}")
