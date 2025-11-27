@@ -26,9 +26,9 @@ POPULATION_SIZE = 1000  # Aumentado
 MUTATION_RATE = 0.25        
 ELITISM_COUNT = 15  # Aumentado
 
-ZETA_RANGE = (0.45, 0.65)  # Aumentado mínimo
+ZETA_RANGE = (0.45, 0.95)  # Aumentado mínimo
 WN_RANGE = (2.0, 10.0)  # Ajustado
-ALPHA_RANGE = (5.0, 30.0)  # Aumentado mínimo
+ALPHA_RANGE = (5.0, 12.0)  # Aumentado mínimo
 
 KD_MAX = 0.8  
 
@@ -39,10 +39,10 @@ Ts = 0.01
 B1, A1, A0 = 0.3246, -1.999, 0.9985  
 Gz = ct.tf([B1, 0], [1, A1, A0], Ts)
 
-MP_MAX = 0.30               
-MP_MIN = 0.20               
-TS_MAX = 3.0                
-TS_MIN = 2.0
+MP_MAX = 0.25               
+MP_MIN = 0.15               
+TS_MAX = 2.9                
+TS_MIN = 2.2
 UNDERSHOOT_MAX = 0.05
 
 
