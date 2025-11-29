@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Algoritmo Genético - VERSÃO SIMPLIFICADA
-Cálculo de ts CORRIGIDO (método clássico)
+Algoritmo Genético para Otimização de Controlador PID Digital
 """
 
 import numpy as np
@@ -19,37 +18,50 @@ RESULTS_DIR = r"C:\Users\Calil\Documents\VIDA\Faculdade\2025.2\Controle Digital\
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ============================================================
-# CONFIGURAÇÃO DO ALGORITMO GENÉTICO
+# PARÂMETROS DO ALGORITMO GENÉTICO
 # ============================================================
-NUM_GENERATIONS = 60  # Aumentado
-POPULATION_SIZE = 1000  # Aumentado
-MUTATION_RATE = 0.25        
-ELITISM_COUNT = 15  # Aumentado
+NUM_GENERATIONS = 20
+POPULATION_SIZE = 1000
+MUTATION_RATE = 0.25
+ELITISM_COUNT = 15
+TOURNAMENT_SIZE = 5
+TOURNAMENT_POOL_SIZE = 300
 
-ZETA_RANGE = (0.45, 0.95)  # Aumentado mínimo
-WN_RANGE = (2.0, 10.0)  # Ajustado
-ALPHA_RANGE = (5.0, 12.0)  # Aumentado mínimo
+# Critério de convergência
+CONVERGENCE_GENERATION = 30
+CONVERGENCE_VALID_COUNT = 300
 
-KD_MAX = 0.8  
+# ============================================================
+# RANGES DE PROJETO
+# ============================================================
+ZETA_RANGE = (0.45, 0.95)
+WN_RANGE = (2.0, 10.0)
+ALPHA_RANGE = (5.0, 12.0)
+
+# ============================================================
+# LIMITES DE GANHOS
+# ============================================================
+KP_MAX = 200.0
+KI_MAX = 100.0
+KD_MAX = 0.8
 
 # ============================================================
 # SISTEMA E ESPECIFICAÇÕES
 # ============================================================
-Ts = 0.01                   
-B1, A1, A0 = 0.3246, -1.999, 0.9985  
+Ts = 0.01  # Período de amostragem (100 Hz)
+B1, A1, A0 = 0.3246, -1.999, 0.9985  # Coeficientes da planta discreta
 Gz = ct.tf([B1, 0], [1, A1, A0], Ts)
 
-MP_MAX = 0.25               
-MP_MIN = 0.15               
-TS_MAX = 2.9                
+MP_MIN = 0.15
+MP_MAX = 0.25
 TS_MIN = 2.2
+TS_MAX = 2.9
 UNDERSHOOT_MAX = 0.03
 
-
-TS_CRITERION = 0.02  
+TS_CRITERION = 0.02  # Banda de settling (±2%)
 
 print("="*70)
-print("ALGORITMO GENETICO - CALCULO ts CORRIGIDO")
+print("ALGORITMO GENETICO - OTIMIZACAO PID")
 print("="*70)
 print(f"Populacao: {POPULATION_SIZE} individuos")
 print(f"Geracoes: {NUM_GENERATIONS}")
@@ -57,11 +69,12 @@ print(f"\nEspecificacoes:")
 print(f"  {MP_MIN*100:.0f}% <= Mp <= {MP_MAX*100:.0f}%")
 print(f"  {TS_MIN:.1f}s <= ts <= {TS_MAX:.1f}s")
 print(f"  Undershoot < {UNDERSHOOT_MAX*100:.1f}%")
-print(f"\nCalculo de ts: METODO CLASSICO")
-print(f"  Criterio: {TS_CRITERION*100:.0f}% (ultimo ponto fora da banda)")
-print(f"\nAjustes:")
+print(f"\nRanges de projeto:")
 print(f"  Zeta: [{ZETA_RANGE[0]}, {ZETA_RANGE[1]}]")
-print(f"  Kd_max: {KD_MAX}")
+print(f"  Wn: [{WN_RANGE[0]}, {WN_RANGE[1]}]")
+print(f"  Alpha: [{ALPHA_RANGE[0]}, {ALPHA_RANGE[1]}]")
+print(f"\nLimites de ganhos:")
+print(f"  Kp_max: {KP_MAX}, Ki_max: {KI_MAX}, Kd_max: {KD_MAX}")
 print(f"\nResultados serao salvos em:")
 print(f"  {RESULTS_DIR}")
 print("-"*70)
@@ -115,12 +128,8 @@ class Individual:
             Kp, Ki, Kd = np.linalg.solve(A, b)
             self.gains = (Kp, Ki, Kd)
             
-            if abs(Kp) > 200 or abs(Ki) > 100 or abs(Kd) > 200:
+            if abs(Kp) > KP_MAX or abs(Ki) > KI_MAX or abs(Kd) > KD_MAX:
                 self.fitness = -50000
-                return
-            
-            if abs(Kd) > KD_MAX:
-                self.fitness = -40000 - (abs(Kd) - KD_MAX) * 30000
                 return
             
             num_C = [Kp + Ki + Kd, -(Kp + 2*Kd), Kd]
@@ -136,22 +145,20 @@ class Individual:
                 self.fitness = -10000
                 return
             
-            # NOVO: Simulação mais longa
             t = np.arange(0, 12, Ts)
             t, y = ct.step_response(sys_mf, T=t)
             
-            yss = np.mean(y[-200:])  # Média dos últimos 200 pontos
+            n_buffer = max(int(len(y) * 0.2), 50)
+            yss = np.mean(y[-n_buffer:])
             
             if not (0.92 < yss < 1.08):
                 self.fitness = -5000
                 return
             
-            # Mp
             ymax = np.max(y)
             idx_max = np.argmax(y)
             Mp = (ymax - yss) / yss if ymax > yss else 0
             
-            # Undershoot
             if idx_max < len(y) - 10:
                 y_after_peak = y[idx_max:]
                 ymin_after_peak = np.min(y_after_peak)
@@ -159,7 +166,6 @@ class Individual:
             else:
                 undershoot = 0
             
-            # NOVO: ts MÉTODO CLÁSSICO SIMPLES
             erro = np.abs(y - yss)
             limite = TS_CRITERION * abs(yss)
             idx_fora = np.where(erro > limite)[0]
@@ -177,12 +183,8 @@ class Individual:
                 'max_pole_mag': max_pole_mag
             }
             
-            # ============================================================
-            # FITNESS
-            # ============================================================
             score = 10000
             
-            # Mp (20-30%)
             if Mp > MP_MAX:
                 excesso = Mp - MP_MAX
                 score -= excesso * 120000
@@ -191,34 +193,29 @@ class Individual:
                 score -= falta * 120000
             else:
                 score += 6000
-                dist = abs(Mp - 0.25)
-                score += (0.05 - dist) * 3000
+                dist = abs(Mp - (MP_MIN + MP_MAX)/2)
+                score += ((MP_MAX - MP_MIN)/2 - dist) * 3000
             
-            # ts (2-3s) - PENALIZAÇÃO MUITO MAIS SEVERA
             if ts > TS_MAX:
                 excesso = ts - TS_MAX
-                score -= excesso * 80000  # 3x mais forte
+                score -= excesso * 80000
             elif ts < TS_MIN:
                 falta = TS_MIN - ts
                 score -= falta * 30000
             else:
                 score += 8000
-                # Quanto mais próximo de 2.5s, melhor
-                dist_centro = abs(ts - 2.5)
-                score += (0.5 - dist_centro) * 5000
+                dist_centro = abs(ts - (TS_MIN + TS_MAX)/2)
+                score += ((TS_MAX - TS_MIN)/2 - dist_centro) * 5000
             
-            # Undershoot
             if undershoot > UNDERSHOOT_MAX:
                 excesso = undershoot - UNDERSHOOT_MAX
                 score -= excesso * 180000
             else:
                 score += (UNDERSHOOT_MAX - undershoot) * 6000
             
-            # Penalização de ganhos
             penalty_ganhos = 0.02 * (abs(Kp) + abs(Ki) + abs(Kd))
             score -= penalty_ganhos
             
-            # Bônus por estabilidade robusta
             margem = 1.0 - max_pole_mag
             score += margem * 2000
             
@@ -255,8 +252,8 @@ def mutate(individual):
         else:
             individual.genes[2] = np.clip(individual.genes[2], *ALPHA_RANGE)
 
-def tournament_selection(population, tournament_size=5):
-    candidates = random.sample(population[:300], tournament_size)
+def tournament_selection(population):
+    candidates = random.sample(population[:TOURNAMENT_POOL_SIZE], TOURNAMENT_SIZE)
     return max(candidates, key=lambda ind: ind.fitness)
 
 # ============================================================
@@ -297,7 +294,7 @@ for generation in range(1, NUM_GENERATIONS + 1):
               f"ts: {ts_val:5.2f}s [{status_ts}] | "
               f"US: {us_pct:4.1f}% [{status_us}]")
     
-    if generation > 100 and valid_count > 300:
+    if generation > CONVERGENCE_GENERATION and valid_count > CONVERGENCE_VALID_COUNT:
         print(f"\nConvergencia alcancada na geracao {generation}!")
         break
     
@@ -383,14 +380,12 @@ plt.figure(figsize=(12, 6))
 plt.plot(t_plot, y_plot, 'b-', linewidth=2.5, label='Resposta y(t)')
 plt.axhline(1.0, color='black', linestyle='--', linewidth=1.5, label='Setpoint', alpha=0.7)
 
-# Faixas alvo
 plt.axvspan(TS_MIN, TS_MAX, color='green', alpha=0.15, label=f'Alvo Tempo ({TS_MIN}-{TS_MAX}s)')
 plt.axhspan(1.0 + MP_MIN, 1.0 + MP_MAX, color='red', alpha=0.15, label=f'Alvo Mp ({MP_MIN*100:.0f}-{MP_MAX*100:.0f}%)')
 plt.axhline(1.0 + MP_MIN, color='r', linestyle=':', alpha=0.6)
 plt.axhline(1.0 + MP_MAX, color='r', linestyle=':', alpha=0.6)
 plt.axhline(1.0 - UNDERSHOOT_MAX, color='orange', linestyle=':', linewidth=1.5, alpha=0.8, label=f'Limite US ({UNDERSHOOT_MAX*100:.1f}%)')
 
-# Banda de ±2% (Para bater com o TS_CRITERION)
 plt.axhspan(1.0 - TS_CRITERION, 1.0 + TS_CRITERION, color='gray', alpha=0.1, label=f'Banda ±{TS_CRITERION*100:.0f}%')
 
 plt.title(f'Resposta Final\nts={ts_final:.2f}s, Mp={mp_final:.1f}%, US={us_final:.1f}%', fontsize=14, fontweight='bold')
